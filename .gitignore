@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Data
+data/raw/
+data/interim/
+
+# Environment
+.venv/
+.env
+
+# OS
+.DS_Store
