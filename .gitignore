@@ -13,3 +13,6 @@ data/interim/
 
 # OS
 .DS_Store
+
+# Packaging 
+*.egg-info/
