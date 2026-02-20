@@ -1,0 +1,18 @@
+experiment: lr_l2_v1
+date: 2026-02-11
+
+model:
+  type: logistic_regression
+  penalty: l2
+  solver: saga
+  C: 0.1
+  class_weight: balanced
+  max_iter: 3000
+  random_state: 42
+
+selection_criteria:
+  best_cv_auc: 0.7712
+  cv_std: 0.0061
+  reasoning: >
+    Selected C=0.1 as stability/variance tradeoff.
+    Larger C increased train-CV gap.

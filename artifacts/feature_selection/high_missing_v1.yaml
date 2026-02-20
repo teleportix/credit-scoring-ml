@@ -1,0 +1,30 @@
+experiment: missing_pruning_v1
+date: 2026-02-11
+
+rule:
+  description: >
+    Features removed due to high missingness (>75%) and/or
+    negligible CV contribution with high computational cost.
+  threshold: 0.75
+  applied_to_model: logistic_regression
+
+before:
+  n_features: 342
+  cv_auc: 0.7753
+  cv_std: 0.0042
+  fit_time: 1961
+
+after:
+  n_features: 335
+  cv_auc: 0.7751
+  cv_std: 0.0042
+  fit_time: 531
+
+dropped_columns:
+  - prev_cc_spend_mean
+  - prev_cc_interest_mean
+  - prev_cc_cost_worst
+  - prev_cc_loan_rate_worst
+  - prev_cc_recent_balance_rate
+  - prev_cc_recent_loan_rate
+  - prev_grace_period_mean

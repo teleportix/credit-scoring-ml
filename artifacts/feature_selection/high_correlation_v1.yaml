@@ -1,0 +1,83 @@
+experiment: correlation_pruning_v1
+date: 2026-02-11
+
+rule:
+  description: >
+    Features removed due to high pairwise correlation
+    to reduce multicollinearity in Logistic Regression.
+  threshold: 0.9
+  applied_to_model: logistic_regression
+
+before:
+  n_features: 403
+  cv_auc: 0.7753
+  cv_std: 0.0042
+  fit_time: 2461
+
+after:
+  n_features: 342
+  cv_auc: 0.7753
+  cv_std: 0.0042
+  fit_time: 1961
+
+dropped_columns:
+  - AMT_GOODS_PRICE
+  - REGION_RATING_CLIENT_W_CITY
+  - LIVINGAPARTMENTS_AVG
+  - LIVINGAREA_AVG
+  - APARTMENTS_MODE
+  - BASEMENTAREA_MODE
+  - YEARS_BEGINEXPLUATATION_MODE
+  - YEARS_BUILD_MODE
+  - COMMONAREA_MODE
+  - ELEVATORS_MODE
+  - ENTRANCES_MODE
+  - FLOORSMAX_MODE
+  - FLOORSMIN_MODE
+  - LANDAREA_MODE
+  - LIVINGAPARTMENTS_MODE
+  - LIVINGAREA_MODE
+  - NONLIVINGAPARTMENTS_MODE
+  - NONLIVINGAREA_MODE
+  - APARTMENTS_MEDI
+  - BASEMENTAREA_MEDI
+  - YEARS_BEGINEXPLUATATION_MEDI
+  - YEARS_BUILD_MEDI
+  - COMMONAREA_MEDI
+  - ELEVATORS_MEDI
+  - ENTRANCES_MEDI
+  - FLOORSMAX_MEDI
+  - FLOORSMIN_MEDI
+  - LANDAREA_MEDI
+  - LIVINGAPARTMENTS_MEDI
+  - LIVINGAREA_MEDI
+  - NONLIVINGAPARTMENTS_MEDI
+  - NONLIVINGAREA_MEDI
+  - TOTALAREA_MODE
+  - OBS_60_CNT_SOCIAL_CIRCLE
+  - prolonged_times
+  - prev_inst_duration_mean
+  - prev_inst_overpay_freq_mean
+  - prev_inst_delay_std_max
+  - prev_inst_delay_std_std
+  - prev_inst_pay_ratio_std_std
+  - prev_inst_delay_recent_max
+  - prev_inst_delay_recent_mean
+  - prev_cc_balance_rate_max
+  - prev_cc_cost_mean
+  - prev_cc_loan_rate_mean
+  - prev_cc_dpd_mean
+  - prev_cc_zero_principal_mean
+  - prev_refused_credit_max
+  - prev_refused_other_cnt
+  - prev_recent_applications_cnt
+  - prev_prolong_mean
+  - prev_loan_duration_mean
+  - cnt_children_capped
+  - days_without_work
+  - has_variability
+  - days_employed_missing
+  - CODE_GENDER_M
+  - NAME_INCOME_TYPE_Pensioner
+  - ORGANIZATION_TYPE_XNA
+  - HOUSETYPE_MODE_block of flats
