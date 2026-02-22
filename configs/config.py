@@ -20,7 +20,7 @@ INTERIM_POS_CASH_BALANCE = INTERIM_PATH / 'pos_cash_balance.csv'
 INTERIM_PREVIOUS_APPLIC = INTERIM_PATH / 'previous_application.csv'
 
 ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
-HYPERPARAM_DIR = ARTIFACTS_DIR / "hyperparam_search"
+HYPERPARAM_DIR = ARTIFACTS_DIR / "hyperparam_selection"
 FEATURE_SELECTION_DIR = ARTIFACTS_DIR / "feature_selection"
 
 CV_SPLITS = FEATURE_SELECTION_DIR / 'cv_splits.pkl'
@@ -29,3 +29,4 @@ PROCESSED_PATH = PROJECT_ROOT / 'data/processed/application_features_baseline.cs
 
 LAST_K = 3
 YEAR = 365.25
+RANDOM_SEED = 42
