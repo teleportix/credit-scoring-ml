@@ -5,14 +5,15 @@ model:
   type: logistic_regression
   penalty: l2
   solver: saga
-  C: 0.1
+  C: 0.001
   class_weight: balanced
   max_iter: 3000
   random_state: 42
 
 selection_criteria:
-  best_cv_auc: 0.7712
-  cv_std: 0.0061
+  cv_auc: 0.7751
+  cv_std: 0.004
+  fit_time: 209
   reasoning: >
-    Selected C=0.1 as stability/variance tradeoff.
-    Larger C increased train-CV gap.
+    Low C hyperparameter (~0.001) for L2 gives the fastest and most robust model.
+    L1 regularization doesn't increase performance, but much slower and less stable.
