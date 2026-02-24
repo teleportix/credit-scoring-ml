@@ -4,8 +4,6 @@ from configs.config import *
 import logging
 import time
 
-start = time.time()
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
@@ -35,24 +33,31 @@ def build_features():
     credit_card_df = raw_data['credit_card']
 
     try:
+        start = time.time()
+
+        step_start = time.time()
         bureau_balance_agg_df = bureau_balance_agg(bureau_balance_df)
-        logger.info(f'bureau_balance aggregation done in {time.time() - start:.2f}s, shape: {bureau_balance_agg_df.shape}')
+        logger.info(f'bureau_balance aggregation done in {time.time() - step_start:.2f}s, shape: {bureau_balance_agg_df.shape}')
 
+        step_start = time.time()
         bureau_agg_df = bureau_agg(bureau_balance_agg_df, bureau_df)
-        logger.info(f'bureau aggregation done in {time.time() - start:.2f}s, shape: {bureau_agg_df.shape}')
+        logger.info(f'bureau aggregation done in {time.time() - step_start:.2f}s, shape: {bureau_agg_df.shape}')
 
+        step_start = time.time()
         pos_cash_agg_df = pos_cash_agg(pos_cash_df)
-        logger.info(f'pos_cash aggregation done in {time.time() - start:.2f}s, shape: {pos_cash_agg_df.shape}')
+        logger.info(f'pos_cash aggregation done in {time.time() - step_start:.2f}s, shape: {pos_cash_agg_df.shape}')
 
+        step_start = time.time()
         installment_agg_df = installment_agg(instal_df)
-        logger.info(f'installment aggregation done in {time.time() - start:.2f}s, shape: {installment_agg_df.shape}')
+        logger.info(f'installment aggregation done in {time.time() - step_start:.2f}s, shape: {installment_agg_df.shape}')
 
+        step_start = time.time()
         credit_card_agg_df = credit_card_agg(credit_card_df)
-        logger.info(f'credit_card aggregation done in {time.time() - start:.2f}s, shape: {credit_card_agg_df.shape}')
+        logger.info(f'credit_card aggregation done in {time.time() - step_start:.2f}s, shape: {credit_card_agg_df.shape}')
 
-
+        step_start = time.time()
         previous_agg_df = previous_agg(previous_applic_df, credit_card_agg_df, pos_cash_agg_df, installment_agg_df)
-        logger.info(f'previous_application aggregation done in {time.time() - start:.2f}s, shape: {previous_agg_df.shape}')
+        logger.info(f'previous_application aggregation done in {time.time() - step_start:.2f}s, shape: {previous_agg_df.shape}')
 
         applic_agg_df = applic_agg(applic_df, bureau_agg_df, previous_agg_df)
         logger.info(f'Full aggregation done in {time.time() - start:.2f}s successfully. Final dataset shape: {applic_agg_df.shape}')
@@ -119,7 +124,6 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
     on='SK_ID_BUREAU',
     )
     
-
     bureau_df = bureau_df.assign(
         early_closure_days= bureau_df['DAYS_CREDIT_ENDDATE'] - bureau_df['DAYS_ENDDATE_FACT'],
         credit_duration= np.abs(bureau_df['DAYS_CREDIT'] - bureau_df['DAYS_ENDDATE_FACT']),
@@ -213,6 +217,8 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
         bureau_agg['debt_mean'] / bureau_agg['credit_sum_mean'],
         np.nan
     )
+    assert bureau_agg['SK_ID_CURR'].is_unique, \
+    "Duplicate SK_ID_CURR in bureau_agg"
 
     return bureau_agg
 
@@ -227,6 +233,9 @@ def pos_cash_agg(pos_cash_df):
     sk_dpd_def_days=('SK_DPD_DEF', 'mean'),
     sk_dpd_def_max=('SK_DPD_DEF', 'max'),
     ).reset_index()
+
+    assert pos_cash_agg['SK_ID_PREV'].is_unique, \
+    "Duplicate SK_ID_PREV in pos_cash_agg"
 
     return pos_cash_agg
 
@@ -277,6 +286,9 @@ def installment_agg(installment_df):
     # Missing data handling
     unpaid_inst_cnt=('DAYS_ENTRY_PAYMENT', lambda x: x.isna().sum())
     ).reset_index()
+
+    assert installment_agg['SK_ID_PREV'].is_unique, \
+    "Duplicate SK_ID_PREV in installment_agg"
 
     return installment_agg
 
@@ -362,6 +374,9 @@ def credit_card_agg(credit_card_df):
     cc_current_debt=('current_debt', 'sum')
     ).reset_index()
 
+    assert credit_card_agg['SK_ID_PREV'].is_unique, \
+    "Duplicate SK_ID_PREV in credit_card_agg"
+
     return credit_card_agg
 
 def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_agg_df):
@@ -411,7 +426,16 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
 
     previous_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     
-    previous_df['reject_code'] = previous_df['CODE_REJECT_REASON'].apply(map_reject_reason)
+    reject_mapping = {
+    'SCO': 'scoring',
+    'SCOFR': 'scoring',
+    'HC': 'internal_reject',
+    'SYSTEM': 'internal_reject',
+    'LIMIT': 'affordability',
+    'CLIENT': 'client_reason'
+}
+    
+    previous_df['reject_code'] = previous_df['CODE_REJECT_REASON'].map(reject_mapping).fillna('other')
 
     previous_agg = previous_df.groupby('SK_ID_CURR').agg(
     # POS_CASH_balance related aggregation
@@ -532,6 +556,9 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
     prev_cnt_payment_mean=('CNT_PAYMENT', 'mean'),
     ).reset_index()
 
+    assert previous_agg['SK_ID_CURR'].is_unique, \
+    "Duplicate SK_ID_CURR in previous_agg"
+
     previous_agg['approved_ratio'] = previous_agg['prev_approved_cnt'] / previous_agg['prev_applic_cnt']
     previous_agg['has_prev_application'] = 1
 
@@ -544,6 +571,9 @@ def applic_agg(applic_df, bureau_agg_df, previous_agg_df):
         .merge(bureau_agg_df, how='left', on='SK_ID_CURR')
         .merge(previous_agg_df, how='left', on='SK_ID_CURR')
     )
+    assert df['SK_ID_CURR'].is_unique, \
+    "Duplicate SK_ID_CURR after merge"
+
 
     df = df.assign(
     credit_income_ratio=df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL'],
@@ -577,28 +607,3 @@ def applic_agg(applic_df, bureau_agg_df, previous_agg_df):
     df['days_employed_missing'] = df['DAYS_EMPLOYED'].isna().astype(int)
 
     return df
-
-
-def map_reject_reason(code):
-    '''
-    Helper function for mapping CODE_REJECT_REASON from previous_application dataset.
-
-    Args:
-        code: codes to map.
-
-    Returns:
-        mapped codes in cormat 'initial' -> 'new'
-    '''
-
-    if pd.isna(code):
-        return 'none'
-    if code in ['SCO', 'SCOFR']:
-        return 'scoring'
-    if code in ['HC', 'SYSTEM']:
-        return 'internal_reject'
-    if code == 'LIMIT':
-        return 'affordability'
-    if code == 'CLIENT':
-        return 'client_reason'
-    else:
-        return 'other'
