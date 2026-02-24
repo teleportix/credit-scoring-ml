@@ -115,6 +115,7 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
     how='left',
     on='SK_ID_BUREAU',
     )
+    
 
     bureau_df = bureau_df.assign(
         early_closure_days= bureau_df['DAYS_CREDIT_ENDDATE'] - bureau_df['DAYS_ENDDATE_FACT'],
@@ -184,7 +185,7 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
     bad_dpd_avg=('bad_dpd_ratio', 'mean'),
     bad_dpd_cnt=('bad_dpd_count', 'sum'),
     bad_dpd_times_max=('bad_dpd_count', 'max'),
-    bigest_small_dpd=('small_dpd_ratio', 'max'),
+    worst_small_dpd=('small_dpd_ratio', 'max'),
     small_dpd_avg=('small_dpd_ratio', 'mean'),
     small_dpd_cnt=('small_dpd_count', 'sum'),
     # flag features
@@ -201,7 +202,7 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
     loans_overdue_ratio=('ever_overdue_flag', 'mean'),
     paid_in_time_avg=('paid_in_time_ratio', 'mean'),
     paid_in_time_cnt=('paid_in_time_count', 'sum'),
-    unkown_ratio_avg=('unknown_ratio', 'mean'),
+    unknown_ratio_avg=('unknown_ratio', 'mean'),
     ).reset_index()
 
     bureau_agg['debt_ratio_mean'] = np.where(
@@ -406,20 +407,6 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
     )
 
     previous_df.replace([np.inf, -np.inf], np.nan, inplace=True)
-
-    def map_reject_reason(code):
-        if pd.isna(code):
-            return 'none'
-        if code in ['SCO', 'SCOFR']:
-            return 'scoring'
-        if code in ['HC', 'SYSTEM']:
-            return 'internal_reject'
-        if code == 'LIMIT':
-            return 'affordability'
-        if code == 'CLIENT':
-            return 'client_reason'
-        else:
-            return 'other'
     
     previous_df['reject_code'] = previous_df['CODE_REJECT_REASON'].apply(map_reject_reason)
 
@@ -519,12 +506,12 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
     prev_refused_other_cnt=('reject_code', lambda x: (x == 'other').sum()),
     # Recent behaviour
     prev_last_application=('DAYS_DECISION', 'min'),
-    prev_recent_applications_cnt=('DAYS_DECISION', lambda x: (x >= -YEAR).count()),
+    prev_recent_applications_cnt=('DAYS_DECISION', lambda x: (x >= -YEAR).sum()),
     prev_recent_approved=('recent_approved', 'sum'),
     # Yield group binning
     prev_high_yield_cnt=('NAME_YIELD_GROUP', lambda x: (x == 'high').sum()),
     prev_middle_yield_cnt=('NAME_YIELD_GROUP', lambda x: (x == 'middle').sum()),
-    prev_low_yeild_cnt=('NAME_YIELD_GROUP', lambda x: x.isin(['low_normal', 'low_action']).sum()),
+    prev_low_yield_cnt=('NAME_YIELD_GROUP', lambda x: x.isin(['low_normal', 'low_action']).sum()),
     # Time related aggregation
     prev_was_disbursed=('was_disbursed', 'mean'),
     prev_grace_period_mean=('grace_period', 'mean'),
@@ -539,7 +526,7 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
     prev_type_pos=('NAME_PORTFOLIO', lambda x: (x == 'POS').sum()),
     prev_type_cash=('NAME_PORTFOLIO', lambda x: (x == 'Cash').sum()),
     prev_cnt_payment_max=('CNT_PAYMENT', 'max'),
-    prev_cnt_paymnet_mean=('CNT_PAYMENT', 'mean'),
+    prev_cnt_payment_mean=('CNT_PAYMENT', 'mean'),
     ).reset_index()
 
     previous_agg['approved_ratio'] = previous_agg['prev_approved_cnt'] / previous_agg['prev_applic_cnt']
@@ -587,3 +574,28 @@ def applic_agg(applic_df, bureau_agg_df, previous_agg_df):
     df['days_employed_missing'] = df['DAYS_EMPLOYED'].isna().astype(int)
 
     return df
+
+
+def map_reject_reason(code):
+    '''
+    Helper function for mapping CODE_REJECT_REASON from previous_application dataset.
+
+    Args:
+        code: codes to map.
+
+    Returns:
+        mapped codes in cormat 'initial' -> 'new'
+    '''
+
+    if pd.isna(code):
+        return 'none'
+    if code in ['SCO', 'SCOFR']:
+        return 'scoring'
+    if code in ['HC', 'SYSTEM']:
+        return 'internal_reject'
+    if code == 'LIMIT':
+        return 'affordability'
+    if code == 'CLIENT':
+        return 'client_reason'
+    else:
+        return 'other'
