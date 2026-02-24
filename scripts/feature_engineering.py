@@ -10,12 +10,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def build_features():
+def build_features(save=True):
     '''
-    Make feature engineering with raw data.
+    Perform feature engineering with raw data.
 
     Returns:
-        None. Save result to data/processed folder.
+        pd.DataFrame: Save engineered DataFrame to data/processed folder and return it. 
 
     Raises:
         Exception: for unexpected errors during aggregation.
@@ -62,10 +62,13 @@ def build_features():
         applic_agg_df = applic_agg(applic_df, bureau_agg_df, previous_agg_df)
         logger.info(f'Full aggregation done in {time.time() - start:.2f}s successfully. Final dataset shape: {applic_agg_df.shape}')
         logger.info(f'Total features: {applic_agg_df.shape[1] - 2}')
-
     except Exception as e:
         logger.error(f"Unexpected error in aggregation: {e}")
         raise
+
+    if save:
+        applic_agg_df.to_csv(PROCESSED_PATH, index=False)
+        logger.info(f'Processed dataset saved to: {PROCESSED_PATH}')
 
     return applic_agg_df
 
