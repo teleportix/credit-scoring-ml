@@ -2,12 +2,14 @@ import pandas as pd
 import numpy as np
 from configs.config import *
 import logging
+import time
+
+start = time.time()
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
 )
-
 logger = logging.getLogger(__name__)
 
 def build_features():
@@ -34,26 +36,27 @@ def build_features():
 
     try:
         bureau_balance_agg_df = bureau_balance_agg(bureau_balance_df)
-        logger.info('bureau_balance aggregation complete')
+        logger.info(f'bureau_balance aggregation done in {time.time() - start:.2f}s, shape: {bureau_balance_agg_df.shape}')
 
         bureau_agg_df = bureau_agg(bureau_balance_agg_df, bureau_df)
-        logger.info('bureau aggregation complete')
+        logger.info(f'bureau aggregation done in {time.time() - start:.2f}s, shape: {bureau_agg_df.shape}')
 
         pos_cash_agg_df = pos_cash_agg(pos_cash_df)
-        logger.info('pos_cash aggregation complete')
+        logger.info(f'pos_cash aggregation done in {time.time() - start:.2f}s, shape: {pos_cash_agg_df.shape}')
 
         installment_agg_df = installment_agg(instal_df)
-        logger.info('installment aggregation complete')
+        logger.info(f'installment aggregation done in {time.time() - start:.2f}s, shape: {installment_agg_df.shape}')
 
         credit_card_agg_df = credit_card_agg(credit_card_df)
-        logger.info('credit_card aggregation complete')
+        logger.info(f'credit_card aggregation done in {time.time() - start:.2f}s, shape: {credit_card_agg_df.shape}')
 
 
         previous_agg_df = previous_agg(previous_applic_df, credit_card_agg_df, pos_cash_agg_df, installment_agg_df)
-        logger.info('previous_application aggregation complete')
+        logger.info(f'previous_application aggregation done in {time.time() - start:.2f}s, shape: {previous_agg_df.shape}')
 
         applic_agg_df = applic_agg(applic_df, bureau_agg_df, previous_agg_df)
-        logger.info('Full aggregation complete successfully')
+        logger.info(f'Full aggregation done in {time.time() - start:.2f}s successfully. Final dataset shape: {applic_agg_df.shape}')
+        logger.info(f'Total features: {applic_agg_df.shape[1] - 2}')
 
     except Exception as e:
         logger.error(f"Unexpected error in aggregation: {e}")
@@ -119,7 +122,7 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
 
     bureau_df = bureau_df.assign(
         early_closure_days= bureau_df['DAYS_CREDIT_ENDDATE'] - bureau_df['DAYS_ENDDATE_FACT'],
-        credit_duration= abs(bureau_df['DAYS_CREDIT'] - bureau_df['DAYS_ENDDATE_FACT']),
+        credit_duration= np.abs(bureau_df['DAYS_CREDIT'] - bureau_df['DAYS_ENDDATE_FACT']),
         ever_overdue_flag= (bureau_df['AMT_CREDIT_MAX_OVERDUE'] > 0).astype(int),
         has_bureau_balance_history=bureau_df['loan_duration'].notna().astype(int),
 
@@ -208,7 +211,7 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
     bureau_agg['debt_ratio_mean'] = np.where(
         bureau_agg['credit_sum_mean'] > 0,
         bureau_agg['debt_mean'] / bureau_agg['credit_sum_mean'],
-        0
+        np.nan
     )
 
     return bureau_agg
