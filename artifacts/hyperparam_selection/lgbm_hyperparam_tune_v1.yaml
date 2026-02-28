@@ -1,0 +1,17 @@
+experiment: lgbm_bayesian_optimization_v1
+data: 2026-02-28
+
+model:
+    learning_rate: 0.0404522
+    num_leaves: 58
+    min_data_in_leaf: 64.777533
+    subsample: 0.5380193
+    colsample_bytree: 0.5
+    reg_alpha: 3.0
+    reg_lambda: 5.5618828
+  
+selection_criteria:
+  cv_auc: 0.7900521 
+  reasoning: >
+    Best hyperparameters based on BayesianOptimization, with mean cv_auc as optimization parameter of the function
+
