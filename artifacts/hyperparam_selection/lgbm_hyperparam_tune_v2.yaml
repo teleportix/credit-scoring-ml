@@ -1,0 +1,26 @@
+experiment: lgbm_bayesian_optimization_v2
+data: 2026-03-09
+
+model:
+    objective: binary
+    metric: auc
+    class_weight: balanced
+    n_estimators: 5000
+    learning_rate: 0.01
+    num_leaves: 26
+    min_data_in_leaf: 209
+    subsample: 0.9
+    colsample_bytree: 0.4
+    reg_alpha: 5.0
+    reg_lambda: 0.1
+    min_gain_to_split: 0.0
+    bagging_freq: 7
+  
+selection_criteria:
+  maximization function: lgb.cv()['valid auc-mean']
+  reasoning: >
+    Best hyperparameters based on BayesianOptimization, with 'valid auc-mean' returned from lgb.cv() as parameter to be maximized. 
+    Take 0.5 of dataset to speed up process (x3 faster then initial tuning experiment).
+
+gained_result:
+  cv_auc: 0.7904
