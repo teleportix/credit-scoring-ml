@@ -1,0 +1,58 @@
+experiment: drop_shap_0_features_v1
+date: 2026-03-09
+
+rule:
+  description: >
+    Remove features with 0 SHAP values.
+  total_features_dropped: 34
+
+before:
+  n_features: 283
+  cv_auc: 0.7904
+  cv_std: 0.0034
+  fit_time: 439
+
+after:
+  n_features: 249
+  cv_auc: 0.7905
+  cv_std: 0.0036
+  fit_time: 396
+
+dropped_columns:
+- FLAG_DOCUMENT_4
+- has_many_children
+- overdue_credits_active
+- AMT_REQ_CREDIT_BUREAU_HOUR
+- FLAG_DOCUMENT_21
+- FLAG_DOCUMENT_20
+- FLAG_DOCUMENT_19
+- AMT_REQ_CREDIT_BUREAU_WEEK
+- overdue_days_active_mean
+- FLAG_DOCUMENT_17
+- AMT_REQ_CREDIT_BUREAU_DAY
+- overdue_days_mean
+- FLAG_DOCUMENT_10
+- FLAG_DOCUMENT_9
+- FLAG_DOCUMENT_11
+- FLAG_DOCUMENT_12
+- FLAG_DOCUMENT_14
+- FLAG_DOCUMENT_15
+- FLAG_DOCUMENT_7
+- FLAG_DOCUMENT_5
+- FLAG_DOCUMENT_2
+- has_prev_application
+- HOUSETYPE_MODE
+- defaults
+- has_credit_card_internal
+- prev_cc_recent_dpd_max
+- REG_REGION_NOT_WORK_REGION
+- REG_REGION_NOT_LIVE_REGION
+- FLAG_CONT_MOBILE
+- FLAG_EMP_PHONE
+- FLAG_MOBIL
+- has_realty_info
+- has_variability
+- has_credit_history
+
+reasoning: >
+  Features with 0 SHAP (no contribution in prediction) were safely removed, due cross validation didn't show any quality reduction of removing these features.
