@@ -99,8 +99,9 @@ def load_data():
     instal_df = pd.read_csv(INSTAL_PAYMENTS_PATH)
     credit_card_df = pd.read_csv(CREDIT_CARD_BALANCE_PATH)
 
-    return {'applic': df, 'bureau': bureau_df, 'bureau_balance': bureau_balance_df, 'previous_applic': previous_applic_df, 'pos_cash': pos_cash_df, 'instal': instal_df, 'credit_card': credit_card_df}
-
+    return {'applic': df, 'bureau': bureau_df, 'bureau_balance': bureau_balance_df, 
+            'previous_applic': previous_applic_df, 'pos_cash': pos_cash_df, 
+            'instal': instal_df, 'credit_card': credit_card_df}
 
 def bureau_balance_agg(bureau_balance_df):
 
@@ -142,11 +143,8 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
             bureau_df['CREDIT_DAY_OVERDUE'],
             0
         ),
-        overdue_ratio= np.where(
-            bureau_df['AMT_CREDIT_SUM'] > 0,
-            bureau_df['AMT_CREDIT_SUM_OVERDUE'] / bureau_df['AMT_CREDIT_SUM'],
-            0
-        ),
+        overdue_ratio=safe_devision(bureau_df, 'AMT_CREDIT_SUM_OVERDUE', 'AMT_CREDIT_SUM'),
+
         credit_sum_active= np.where(
             bureau_df['CREDIT_ACTIVE'] == 'Active',
             bureau_df['AMT_CREDIT_SUM'],
@@ -216,7 +214,7 @@ def bureau_agg(bureau_balance_agg_df, bureau_df):
     ).reset_index()
 
     bureau_agg['debt_ratio_mean'] = np.where(
-        bureau_agg['credit_sum_mean'] > 0,
+        bureau_agg['credit_sum_mean'] != 0,
         bureau_agg['debt_mean'] / bureau_agg['credit_sum_mean'],
         np.nan
     )
@@ -243,13 +241,13 @@ def pos_cash_agg(pos_cash_df):
     return pos_cash_agg
 
 def installment_agg(installment_df):
-    installment_df = installment_df.sort_values(['SK_ID_PREV', 'DAYS_INSTALMENT'])
+    installment_df = installment_df.sort_values(['SK_ID_PREV', 'DAYS_INSTALMENT'], ascending=[True, False])
 
     installment_df = installment_df.assign(
     delay_days=installment_df['DAYS_ENTRY_PAYMENT'] - installment_df['DAYS_INSTALMENT'],
     underpay_amt=installment_df['AMT_INSTALMENT'] - installment_df['AMT_PAYMENT'],
-    inst_rank_recency=installment_df.groupby('SK_ID_PREV').cumcount(ascending=False),
-    payment_ratio=installment_df['AMT_PAYMENT'] / installment_df['AMT_INSTALMENT']
+    inst_rank_recency=installment_df.groupby('SK_ID_PREV').cumcount(),
+    payment_ratio=safe_devision(installment_df, 'AMT_PAYMENT', 'AMT_INSTALMENT')
     )
 
     installment_df = installment_df.assign(
@@ -264,8 +262,6 @@ def installment_agg(installment_df):
             np.nan
         )
     )
-    
-    installment_df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     installment_agg = installment_df.groupby('SK_ID_PREV').agg(
     inst_cnt=('AMT_INSTALMENT', 'count'),
@@ -284,7 +280,7 @@ def installment_agg(installment_df):
     payment_ratio_std=('payment_ratio', 'std'),
     # recency behaviour
     delay_recent_max=('delay_days_recent', 'max'),
-    delay_recent_mean=('delay_days', 'mean'),
+    delay_recent_mean=('delay_days_recent', 'mean'),
     underpay_recent_freq=('underpay_recent', lambda x: (x > 0).mean()),
     # Missing data handling
     unpaid_inst_cnt=('DAYS_ENTRY_PAYMENT', lambda x: x.isna().sum())
@@ -301,11 +297,15 @@ def credit_card_agg(credit_card_df):
 
     credit_card_df = credit_card_df.assign(
         rank_recency=credit_card_df.groupby('SK_ID_PREV').cumcount(),
-        balance_rate=credit_card_df['AMT_BALANCE'] / credit_card_df['AMT_CREDIT_LIMIT_ACTUAL'],
-        spend_rate=credit_card_df['AMT_DRAWINGS_CURRENT'] / credit_card_df['AMT_BALANCE'],
-        interest_rate=(credit_card_df['AMT_RECIVABLE'] - credit_card_df['AMT_RECEIVABLE_PRINCIPAL']) / credit_card_df['AMT_RECEIVABLE_PRINCIPAL'],
-        cost_ratio=credit_card_df['AMT_TOTAL_RECEIVABLE'] / credit_card_df['AMT_RECEIVABLE_PRINCIPAL'],
-        loan_rate=credit_card_df['AMT_BALANCE'] / credit_card_df['AMT_RECEIVABLE_PRINCIPAL'],
+        balance_rate=safe_devision(credit_card_df, 'AMT_BALANCE', 'AMT_CREDIT_LIMIT_ACTUAL'),
+        spend_rate=safe_devision(credit_card_df, 'AMT_DRAWINGS_CURRENT', 'AMT_BALANCE'),
+        interest_rate=np.where(
+            credit_card_df['AMT_RECEIVABLE_PRINCIPAL'] != 0,
+            (credit_card_df['AMT_RECIVABLE'] - credit_card_df['AMT_RECEIVABLE_PRINCIPAL']) / credit_card_df['AMT_RECEIVABLE_PRINCIPAL'],
+            np.nan
+        ),
+        cost_ratio=safe_devision(credit_card_df, 'AMT_TOTAL_RECEIVABLE', 'AMT_RECEIVABLE_PRINCIPAL'),
+        loan_rate=safe_devision(credit_card_df, 'AMT_BALANCE', 'AMT_RECEIVABLE_PRINCIPAL'),
         has_credit_limit = (credit_card_df['AMT_CREDIT_LIMIT_ACTUAL'] > 0 ).astype(int),
         zero_balance=(credit_card_df['AMT_BALANCE'] == 0).astype(int),
         zero_principal=(credit_card_df['AMT_RECEIVABLE_PRINCIPAL'] == 0).astype(int),
@@ -339,8 +339,6 @@ def credit_card_agg(credit_card_df):
         0
         )
     )
-
-    credit_card_df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     credit_card_agg = credit_card_df.groupby('SK_ID_PREV').agg(
     has_credit_card_internal=('MONTHS_BALANCE', lambda x: int(x.size > 0)),
@@ -412,13 +410,17 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
         approved_annuity=previous_df['AMT_ANNUITY'].where(previous_df['is_approved'] == 1),
         approved_credit=previous_df['AMT_CREDIT'].where(previous_df['is_approved'] == 1),
         refused_credit=previous_df['AMT_CREDIT'].where(previous_df['is_refused'] == 1),
-        request_diff_ratio=(previous_df['AMT_APPLICATION'] - previous_df['AMT_CREDIT']) / previous_df['AMT_APPLICATION'],
+        request_diff_ratio=np.where(
+            previous_df['AMT_APPLICATION'] != 0,
+            (previous_df['AMT_APPLICATION'] - previous_df['AMT_CREDIT']) / previous_df['AMT_APPLICATION'],
+            np.nan
+        ),
         was_disbursed=previous_df['DAYS_FIRST_DRAWING'].notna().astype(int),
         grace_period=previous_df['DAYS_FIRST_DUE'] - previous_df['DAYS_FIRST_DRAWING'],
         delay=previous_df['DAYS_TERMINATION'] - previous_df['DAYS_LAST_DUE_1ST_VERSION'],
         prolongation=previous_df['DAYS_LAST_DUE'] - previous_df['DAYS_LAST_DUE_1ST_VERSION'],
         loan_duration=previous_df['DAYS_LAST_DUE_1ST_VERSION'] - previous_df['DAYS_FIRST_DUE'],
-        unpaid_ratio=previous_df['unpaid_inst_cnt'] / previous_df['inst_cnt']
+        unpaid_ratio=safe_devision(previous_df, 'unpaid_inst_cnt', 'inst_cnt')
     )
 
     previous_df['recent_approved'] = np.where(
@@ -426,8 +428,6 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
         previous_df['is_approved'],
         np.nan
     )
-
-    previous_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     
     reject_mapping = {
     'SCO': 'scoring',
@@ -562,7 +562,7 @@ def previous_agg(previous_df, credit_card_agg_df, pos_cash_agg_df, installment_a
     assert previous_agg['SK_ID_CURR'].is_unique, \
     "Duplicate SK_ID_CURR in previous_agg"
 
-    previous_agg['approved_ratio'] = previous_agg['prev_approved_cnt'] / previous_agg['prev_applic_cnt']
+    previous_agg['approved_ratio'] = safe_devision(previous_agg, 'prev_approved_cnt', 'prev_applic_cnt')
     previous_agg['has_prev_application'] = 1
 
     return previous_agg
@@ -579,34 +579,93 @@ def applic_agg(applic_df, bureau_agg_df, previous_agg_df):
 
 
     df = df.assign(
-    credit_income_ratio=df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL'],
-    annuity_income_ratio=df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL'],
+    credit_income_ratio=safe_devision(df, 'AMT_CREDIT', 'AMT_INCOME_TOTAL'),
+    annuity_income_ratio=safe_devision(df, 'AMT_ANNUITY', 'AMT_INCOME_TOTAL'),
     log_income=np.log1p(df['AMT_INCOME_TOTAL']),
     log_credit=np.log1p(df['AMT_CREDIT']),
     has_many_children=(df['CNT_CHILDREN'] >= 3).astype(int),
     cnt_children_capped=df['CNT_CHILDREN'].clip(upper=3),
     ext_source_1_missing=df['EXT_SOURCE_1'].isna().astype(int),
     ext_source_3_missing=df['EXT_SOURCE_3'].isna().astype(int),
-    credit_annuity_ratio= df['AMT_ANNUITY'] / df['AMT_CREDIT'],
+    credit_annuity_ratio=safe_devision(df, 'AMT_ANNUITY', 'AMT_CREDIT'),
     credit_over_goods_price= df['AMT_CREDIT'] - df['AMT_GOODS_PRICE'],
     days_without_work= df['DAYS_BIRTH'] - df['DAYS_EMPLOYED'],
-    credit_per_family_member= df['AMT_CREDIT'] / df['CNT_FAM_MEMBERS'],
-    annuity_per_family_member= df['AMT_ANNUITY'] / df['CNT_FAM_MEMBERS'],
-    income_per_family_member= df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS']
+    credit_per_family_member=safe_devision(df, 'AMT_CREDIT', 'CNT_FAM_MEMBERS'),
+    annuity_per_family_member=safe_devision(df, 'AMT_ANNUITY', 'CNT_FAM_MEMBERS'),
+    income_per_family_member=safe_devision(df, 'AMT_INCOME_TOTAL', 'CNT_FAM_MEMBERS')
     )
 
     df = df.assign(
     has_realty_info=df['APARTMENTS_AVG'].notna().astype(int),
     has_variability=df['prev_inst_pay_ratio_std_mean'].notna().astype(int),
     has_credit_history=df['first_credit_time'].notna().astype(int),
-    # has_credit_enquiries=df['AMT_REQ_CREDIT_BUREAU_YEAR'].notna().astype(int)
     )
 
-    # clients without credit card history currently NaN in table, fill it with 0
-    df['has_credit_card_internal'] = df['has_credit_card_internal'].fillna(0)
-    df['has_prev_application'] = df['has_prev_application'].fillna(0)
     #365243 means NaN in dataset, we add DAYS_EMPLOYED_MISSING as borrowers whith NaN values have lower default rate
     df['DAYS_EMPLOYED'] = df['DAYS_EMPLOYED'].replace(365243, np.nan)
     df['days_employed_missing'] = df['DAYS_EMPLOYED'].isna().astype(int)
 
+    # Replace inf and -inf in all rows where needed
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
     return df
+
+# Helper functions
+
+def reduce_memory(df, verbose=True):
+    """Reduce memory usage of a dataframe by setting data types. """
+    start_mem = df.memory_usage().sum() / 1024 ** 2
+
+    for col in df.columns:
+        col_type = df[col].dtypes
+
+        if pd.api.types.is_object_dtype(col_type):
+            n_unique = df[col].nunique(dropna=False)
+            n_total = len(df[col])
+            if (n_unique / n_total) < 0.5:
+                df[col] = df[col].astype('category')
+            continue
+
+        if pd.api.types.is_integer_dtype(col_type):
+            cmin = df[col].min()
+            cmax = df[col].max()
+
+            if df[col].isnull().any():
+                if cmin > -128 and cmax < 127:
+                    df[col] = df[col].astype('Int8')
+                elif cmin > -32768 and cmax < 32767:
+                    df[col] = df[col].astype('Int16')
+                else:
+                    df[col] = df[col].astype('Int32')
+            elif cmin > np.iinfo(np.int8).min and cmax < np.iinfo(np.int8).max:
+                df[col] = df[col].astype(np.int8)
+            elif cmin > np.iinfo(np.int16).min and cmax < np.iinfo(np.int16).max:
+                df[col] = df[col].astype(np.int16)
+            elif cmin > np.iinfo(np.int32).min and cmax < np.iinfo(np.int32).max:
+                df[col] = df[col].astype(np.int32)
+
+        elif pd.api.types.is_float_dtype(col_type):
+            df[col] = pd.to_numeric(df[col], downcast='float')
+
+    end_mem = df.memory_usage().sum() / 1024 ** 2
+    memory_reduction = 100 * (start_mem - end_mem) / start_mem
+
+    if verbose:
+        print(f'Memory: {start_mem:.2f} MB → {end_mem:.2f} MB '
+              f'({memory_reduction:.1f}% reduction)')
+        
+    return df
+
+def safe_devision(df, num, den):
+    '''
+    Helper function for safe devision of numerator: num on denominator: den in DataFrame: df.
+
+    Returns: pd.Series
+    '''
+    devided = np.where(
+        df[den] != 0,
+        df[num] / df[den],
+        np.nan
+    )
+    
+    return devided
