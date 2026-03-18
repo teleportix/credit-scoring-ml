@@ -3,6 +3,7 @@ import numpy as np
 from configs.config import *
 import logging
 import time
+import gc
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,30 +39,39 @@ def build_features(save=True):
         step_start = time.time()
         bureau_balance_agg_df = bureau_balance_agg(bureau_balance_df)
         logger.info(f'bureau_balance aggregation done in {time.time() - step_start:.2f}s, shape: {bureau_balance_agg_df.shape}')
+        del bureau_balance_df
 
         step_start = time.time()
         bureau_agg_df = bureau_agg(bureau_balance_agg_df, bureau_df)
         logger.info(f'bureau aggregation done in {time.time() - step_start:.2f}s, shape: {bureau_agg_df.shape}')
+        del bureau_balance_agg_df, bureau_df; gc.collect()
 
         step_start = time.time()
         pos_cash_agg_df = pos_cash_agg(pos_cash_df)
         logger.info(f'pos_cash aggregation done in {time.time() - step_start:.2f}s, shape: {pos_cash_agg_df.shape}')
+        del pos_cash_df
 
         step_start = time.time()
         installment_agg_df = installment_agg(instal_df)
         logger.info(f'installment aggregation done in {time.time() - step_start:.2f}s, shape: {installment_agg_df.shape}')
+        del instal_df
 
         step_start = time.time()
         credit_card_agg_df = credit_card_agg(credit_card_df)
         logger.info(f'credit_card aggregation done in {time.time() - step_start:.2f}s, shape: {credit_card_agg_df.shape}')
+        del credit_card_df
 
         step_start = time.time()
         previous_agg_df = previous_agg(previous_applic_df, credit_card_agg_df, pos_cash_agg_df, installment_agg_df)
         logger.info(f'previous_application aggregation done in {time.time() - step_start:.2f}s, shape: {previous_agg_df.shape}')
+        del previous_applic_df, installment_agg_df, pos_cash_agg_df, credit_card_agg_df; gc.collect()
 
         applic_agg_df = applic_agg(applic_df, bureau_agg_df, previous_agg_df)
         logger.info(f'Full aggregation done in {time.time() - start:.2f}s successfully. Final dataset shape: {applic_agg_df.shape}')
         logger.info(f'Total features: {applic_agg_df.shape[1] - 2}')
+        del applic_df, bureau_agg_df, previous_agg_df; gc.collect()
+
+        applic_agg_df = reduce_memory(applic_agg_df)
     except Exception as e:
         logger.error(f"Unexpected error in aggregation: {e}")
         raise
