@@ -23,9 +23,11 @@ ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
 HYPERPARAM_DIR = ARTIFACTS_DIR / "hyperparam_selection"
 FEATURE_SELECTION_DIR = ARTIFACTS_DIR / "feature_selection"
 
+PROCESSED_DATA_DIR = PROJECT_ROOT / 'data/processed'
 CV_SPLITS = FEATURE_SELECTION_DIR / 'cv_splits.pkl'
+TEST_SPLITS = PROCESSED_DATA_DIR / 'test_splits.pkl'
 
-PROCESSED_PATH = PROJECT_ROOT / 'data/processed/application_features_baseline.csv'
+PROCESSED_PATH = PROCESSED_DATA_DIR / 'application_features_baseline.csv'
 
 LAST_K = 3
 YEAR = 365.25
