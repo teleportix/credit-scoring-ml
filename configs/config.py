@@ -19,16 +19,20 @@ INTERIM_CREDIT_CARD = INTERIM_PATH / 'credit_card.csv'
 INTERIM_POS_CASH_BALANCE = INTERIM_PATH / 'pos_cash_balance.csv'
 INTERIM_PREVIOUS_APPLIC = INTERIM_PATH / 'previous_application.csv'
 
+# experiment results
 ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
 HYPERPARAM_DIR = ARTIFACTS_DIR / "hyperparam_selection"
 FEATURE_SELECTION_DIR = ARTIFACTS_DIR / "feature_selection"
+ABLATION_TEST = FEATURE_SELECTION_DIR / 'lr_albation_test.csv'
+MISSING_THRESHOLD_TEST = FEATURE_SELECTION_DIR / 'lr_missing_threshold_test.csv'
 
+# processed data and computed splits
 PROCESSED_DATA_DIR = PROJECT_ROOT / 'data/processed'
-CV_SPLITS = FEATURE_SELECTION_DIR / 'cv_splits.pkl'
+CV_SPLITS = PROCESSED_DATA_DIR / 'cv_splits.pkl'
 TEST_SPLITS = PROCESSED_DATA_DIR / 'test_splits.pkl'
-
 PROCESSED_PATH = PROCESSED_DATA_DIR / 'application_features_baseline.csv'
 
+# global constants
 LAST_K = 3
 YEAR = 365.25
 RANDOM_SEED = 42
