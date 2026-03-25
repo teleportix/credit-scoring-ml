@@ -2,15 +2,22 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 import joblib
 from configs.config import RANDOM_SEED, CV_SPLITS, TEST_SPLITS
 
-def split(data, test_size=0.15, cv_splits=5):
+def split(data, test_size=0.15, cv_splits=5, recompute=False):
     '''
     Split data on train/test/val sets
     
     Return:
         train_ids: list, SK_ID_CURR ids of train data
         test_ids: list, SK_ID_CURR ids of test data
-        splits: tuple of lists, cv splits on SK_ID_CURR
+        splits: list of tuples (train_idx, val_idx), cv splits on SK_ID_CURR
     '''
+
+    # Return splits if they already exist, and recompute=False
+    split_paths = [CV_SPLITS, TEST_SPLITS]
+    if all(p.exists() for p in split_paths) and not recompute:
+        train_ids, test_ids = joblib.load(TEST_SPLITS)
+        splits = joblib.load(cv_splits)
+        return train_ids, test_ids, splits
 
     ids = data['SK_ID_CURR']
     y = data['TARGET']
